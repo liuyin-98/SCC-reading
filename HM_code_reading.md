@@ -80,9 +80,13 @@ Void TEncSearch::xDerivePaletteLossy(
 {}
 ```
 1. 统计颜色直方图并将结果存入 `psListHistogram` 中
+
 2. 找到颜色直方图中的主导颜色（主导元素的定义为没有其他相似像素的数量大于它的两倍），并将其添加至`psList`和`psInitial`中，同时将相似像素归零
+
 3. 遍历所有像素，在`psList`中为其匹配最佳调色板（针对上一步中不是主导颜色的像素），如果接近则更新主导颜色，否则添加当前颜色
+
 4. 将`psSortList`按照统计次数降序排序
+
 5. 此步开始构建外部传入指针的调色板`Palette`，遍历**当前**调色板`psSortList`中的元素
     * 对该类像素进行平均后四舍五入取整（由于该类像素包括主导像素和相似像素，故产生误差）并加入`Palette`中
     * 计算RD cost `bestCost` （像素数量*单个像素产生的误差 + 单个像素的比特数）
@@ -93,5 +97,23 @@ Void TEncSearch::xDerivePaletteLossy(
     
     *此步后，调色板中已经添加了主要颜色，还有一些孤立颜色未添加*
 
-6. 遍历每一个像素并选择最佳调色板，如果误差小于阈值，则将调色板索引其添加到CU的map`m_indexBlock`中；如果误差大于阈值，则进行`xCalcPixelPredRD`==???==，如果进行它之后的RDcost小于调色板，则将其视为孤立像素，`m_indexBlock`对应位置填入-1
+6. 遍历每一个像素，初步选择最佳调色板，如果误差小于阈值，则将调色板索引其添加到CU的map`m_indexBlock`中；如果误差大于阈值，则进行`xCalcPixelPredRD`，如果进行它之后的RDcost小于调色板，则将其视为孤立像素，`m_indexBlock`对应位置填入-1
+
+    > 此外引入了变量`UInt palettePredSamples[MAX_PALETTE_SIZE][5];`，在不是YUV400格式的情况下
+    >
+    > | 变量                       | 含义                           |
+    > | -------------------------- | ------------------------------ |
+    > | `palettePredSamples[i][0]` | 使用第`i`个调色板的次数        |
+    > | `palettePredSamples[i][1]` | 使用第`i`个调色板的Y分量累加和 |
+    > | `palettePredSamples[i][2]` | 使用第`i`个调色板的U分量累加和 |
+    > | `palettePredSamples[i][3]` | 使用第`i`个调色板的V分量累加和 |
+    > | `palettePredSamples[i][4]` | 使用第`i`个调色板的次数        |
+
+7. 遍历**当前**调色板，再次选择最佳调色板，==关于如何选择**预测**调色板中的最优元素==。
+
+    * 利用`palettePredSamples[i]`更新当前调色板，计算RDcost
+    * 在**预测**调色板中选出Top `maxPredCheck` 个失真最小的调色板（按照失真从小到大排序），如果**当前**调色板之前添加**预测**调色板的索引不属于Top `maxPredCheck`，则后续考虑Top `maxPredCheck+1`
+    * 遍历Top `maxPredCheck+1`，然后选出最小的RDcost，更新**当前**调色板中选择的**预测**调色板的索引
+
+### 游程模式
 
