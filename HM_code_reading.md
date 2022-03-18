@@ -68,6 +68,9 @@
 ```
 
 ### 构建调色板
+
+#### 普通Lossy
+
 ``` c++
 Void TEncSearch::xDerivePaletteLossy(
             TComDataCU* pcCU, 
@@ -114,6 +117,33 @@ Void TEncSearch::xDerivePaletteLossy(
     * 利用`palettePredSamples[i]`更新当前调色板，计算RDcost
     * 在**预测**调色板中选出Top `maxPredCheck` 个失真最小的调色板（按照失真从小到大排序），如果**当前**调色板之前添加**预测**调色板的索引不属于Top `maxPredCheck`，则后续考虑Top `maxPredCheck+1`
     * 遍历Top `maxPredCheck+1`，然后选出最小的RDcost，更新**当前**调色板中选择的**预测**调色板的索引
+
+#### 强制使用预测模式Lossy
+
+``` c++
+Void TEncSearch::xDerivePaletteLossyForcePrediction(
+    TComDataCU* pcCU, 
+    Pel* Palette[3], 
+    Pel* pSrc[3], 
+    UInt width, UInt height, 
+    UInt& paletteSize, 
+    TComRdCost* pcCost)
+
+```
+
+1. 遍历每一个像素点，在误差范围内，统计使用各个预测调色板的次数，按照使用次数从多到少填入当前调色板作为初始化
+
+2. 遍历每一个像素点，如果第一步选出的调色板不满足允许误差，则将其添加到临时变量`psList`中
+
+3. 冒泡排序`psList`，结果储存在`psListSort`中
+
+4. 将`psListSort`中的调色板四舍五入后临时加入到当前调色板中，计算四舍五入后产生的代价，再计算**未**四舍五入后的调色板与当前调色板中其他元素的代价决定是否真正加入
+
+   *此处仍有游离元素存在，调色板不完整*
+
+5. 遍历每一个像素点，为每一个像素点选择一个最佳调色板，如果最佳调色板的SSE都要**高于**Escape Mode，那么则将当前点视为游离元素，在`m_indexBlock`的对应位置-1，否则在`palettePredSamples`中重新统计该调色板出现的次数等信息，在`m_indexBlock`的对应位置置调色板索引
+
+6. 遍历当前调色板中的元素，利用`palettePredSamples`中的信息更新调色板，计算使用该调色板的像素产生的误差`minError`，在预测调色板中选出与该调色板误差最小的前`maxPredCheck`个，从小到大将其索引放置在`paletteIndBest`中，分别计算使用`maxPredCheck`产生的误差`absError`，最后如果预测调色板中的误差更小则选择相应的索引更小的预测调色板，**临时**更新当前调色板为预测调色板的元素，如果当前索引之前的调色板有与之相同的，则不更新
 
 ### 游程模式
 
