@@ -67,6 +67,53 @@
   ("PalettePredInPPSEnabled", m_palettePredInPPSEnabled, false, "Transmit palette predictor in PPS")
 ```
 
+### 整体流程
+
+```flow
+start=>start: 检查完IBC模式
+afterIBC=>operation: 检查完IBC模式
+isPalette=>condition: 是否使用调色板?
+init1=>operation: 设置调色板中Escape使用的QP，允许误差，forcePalettePrediction标志位
+init2=>operation: 为普通模式和强制使用预测模式的调色板大小分配内存paletteSize[2]
+isU32=>condition: CU大小是否小于等于32?
+check0=>operation: 第一次尝试普通模式，将调色板大小存入paletteSize[0]，testedModes[0]=xCheckPaletteMode( rpcBestCU, rpcTempCU, false, iterNumber, paletteSize);
+isLossy=>condition: 有损编码？
+isCheck0=>condition: 第1次尝试普通模式有效？
+check2=>operation: 第二次尝试普通模式，对调色板按照出现次数降序排序，testedModes[2]=xCheckPaletteMode( rpcBestCU, rpcTempCU, false, iterNumber, paletteSize)，其中会调用Iter;
+isForcePred=>condition: 强制使用预测模式？
+check1=>operation: 第一次尝试预测模式，将调色板大小存入paletteSize[1]，operation:testedModes[1]=xCheckPaletteMode( rpcBestCU, rpcTempCU, true, iterNumber, paletteSize+1);
+isCheck1=>condition: 第1次尝试预测模式有效？
+check3=>operation: 第二次尝试预测模式，对调色板按照出现次数降序排序，testedModes[3]=xCheckPaletteMode( rpcBestCU, rpcTempCU, true, iterNumber, paletteSize+1)，其中会调用Iter;
+end=>end: 继续向下划分
+
+start->isPalette
+isPalette(no) ->end
+isPalette(yes)->init1
+init1->init2
+init2->isU32
+isU32(no)->end
+isU32(yes)->check0
+check0->isLossy
+isLossy(no)->end
+isLossy(yes)->isCheck0
+isCheck0(yes)->check2
+isCheck0(no)->check1
+check2->isForcePred
+isForcePred(yes)->check1
+isForcePred(no)->end
+check1->isCheck1
+isCheck1(yes)->check3
+isCheck1(no)->end
+check3->end
+
+```
+
+
+
+
+
+
+
 ### 构建调色板
 
 #### 普通Lossy
