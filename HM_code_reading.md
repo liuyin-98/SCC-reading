@@ -67,7 +67,21 @@
   ("PalettePredInPPSEnabled", m_palettePredInPPSEnabled, false, "Transmit palette predictor in PPS")
 ```
 
+### 一些变量
+
+| 变量名                        | 含义                                                         |
+| ----------------------------- | ------------------------------------------------------------ |
+| `m_indError[pos][paletteIdx]` | `pos`处使用调色板`paletteIdx`产生的SSE<br />**注意** `m_indError[pos]`的长度为`MAX_PALETTE_SIZE+1`<br />`m_indError[pos][MAX_PALETTE_SIZE-1]`记录了使用Escape模式的rdCost<br />`m_indError[pos][MAX_PALETTE_SIZE-1]`记录了使用Escape模式的SSE |
+| `m_piLevel[component][pos]`   | 如果该`pos`的像素不是游离像素，则`m_piLevel[0][pos]`存放调色板索引<br />否则``m_piLevel[0][pos],m_piLevel[1][pos], m_piLevel[2][pos] ``存放量化值，注意如果是YUV420格式，那么只有`x%2==0 && y%2==0`处有效 |
+|                               |                                                              |
+|                               |                                                              |
+|                               |                                                              |
+
+
+
 ### 整体流程
+
+`xCompressCU()` $\rightarrow$`xCheckPaletteMode()` $\rightarrow$`m_pcPredSearch->paletteSearch()`
 
 ```flow
 start=>start: 检查完IBC模式
@@ -111,6 +125,12 @@ check3->end
 
 
 
+
+
+
+### 编码流程
+
+ 
 
 
 
